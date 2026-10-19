@@ -16,7 +16,11 @@ var InitCmd = &cobra.Command{
 The config file will be automatically created if not found.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Printf("Config file is %s", viper.ConfigFileUsed())
-		log.Printf("Token: %s", viper.GetString("token"))
+		if viper.GetString("token") == "" {
+			log.Printf("Token: unset")
+		} else {
+			log.Printf("Token: set")
+		}
 		log.Printf("Organization id: %d", viper.GetInt("org-id"))
 	},
 }

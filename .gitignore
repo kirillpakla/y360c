@@ -22,3 +22,11 @@ go.work
 
 # other paths
 .idea/
+
+# Local variables and any exported directory data. Never commit.
+.env
+.env.*
+!.env.example
+y360c.json
+*.token
+*.csv
