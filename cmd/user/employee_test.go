@@ -11,8 +11,11 @@ import (
 )
 
 func TestCreateEmployeePostsOfficialContractWithoutAdminOrPasswordFlag(t *testing.T) {
-	if addCmd.Flags().Lookup("password") != nil {
-		t.Fatal("create command accepts a password flag")
+	if addCmd.Flags().Lookup("password") == nil {
+		t.Fatal("create command is missing the password flag")
+	}
+	if addCmd.Flags().Lookup("output") == nil {
+		t.Fatal("create command is missing the output flag")
 	}
 
 	var gotMethod, gotPath, gotAuth string
@@ -43,6 +46,7 @@ func TestCreateEmployeePostsOfficialContractWithoutAdminOrPasswordFlag(t *testin
 		First:        "Person",
 		Last:         "Example",
 		Password:     "synthetic-password",
+		Position:     "Engineer",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -60,12 +64,14 @@ func TestCreateEmployeePostsOfficialContractWithoutAdminOrPasswordFlag(t *testin
 		`"first":"Person"`,
 		`"last":"Example"`,
 		`"password":"synthetic-password"`,
+		`"passwordChangeRequired":true`,
+		`"position":"Engineer"`,
 	} {
 		if !strings.Contains(body, part) {
 			t.Fatalf("body missing %s", part)
 		}
 	}
-	if strings.Contains(body, "isAdmin") || strings.Contains(body, "passwordChangeRequired") {
+	if strings.Contains(body, "isAdmin") {
 		t.Fatal("create body included an excluded field")
 	}
 
@@ -76,7 +82,7 @@ func TestCreateEmployeePostsOfficialContractWithoutAdminOrPasswordFlag(t *testin
 }
 
 func TestPatchEmployeeSendsMissingFieldsAndEnabledState(t *testing.T) {
-	for _, name := range []string{"nickname", "first-name", "last-name", "middle-name", "gender", "language", "timezone", "is-enabled"} {
+	for _, name := range []string{"nickname", "first-name", "last-name", "middle-name", "gender", "language", "timezone", "is-enabled", "position"} {
 		if setCmd.Flags().Lookup(name) == nil {
 			t.Fatalf("flag %s is missing", name)
 		}
@@ -110,6 +116,7 @@ func TestPatchEmployeeSendsMissingFieldsAndEnabledState(t *testing.T) {
 		Language:  "ru",
 		Timezone:  "Europe/Moscow",
 		IsEnabled: "no",
+		Position:  "Engineer",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -127,6 +134,7 @@ func TestPatchEmployeeSendsMissingFieldsAndEnabledState(t *testing.T) {
 		`"language":"ru"`,
 		`"timezone":"Europe/Moscow"`,
 		`"isEnabled":false`,
+		`"position":"Engineer"`,
 	} {
 		if !strings.Contains(body, part) {
 			t.Fatalf("body missing %s", part)

@@ -32,11 +32,34 @@ var (
 
 var setCmd = &cobra.Command{
 	Use:   "set",
-	Short: "Set an attributes of the user",
-	Long: `Use this command to set an attributes (name, birthday, department, etc.) of the selected user.
-"directory:write_users" permission is required (see Y360 help topics).`,
-	Example: `  y360c user set --email person@example.com --department-id 42
-  y360c user set --id user-100 --is-enabled no`,
+	Short: "Change employee fields",
+	Long: `Use this command to change an existing employee.
+"directory:write_users" permission is required (see Y360 help topics).
+
+Select the employee with --email or --id. Pass only the fields to change.
+A flag you omit is not sent, and that field stays as it is.
+
+  --about           profile description
+  --birthday        date as YYYY-MM-DD
+  --display-name    name shown in the profile
+  --external-id     external identifier
+  --position        job title
+  --department-id   department id; moves the employee
+  --is-admin        administrator rights: yes or no
+  --first-name      given name
+  --last-name       family name
+  --middle-name     patronymic
+  --nickname        login
+  --gender          gender value accepted by the directory
+  --language        language code, for example ru
+  --timezone        time zone, for example Europe/Moscow
+  --is-enabled      sign-in allowed: yes or no
+
+The result table shows id, description, birthday, display name, external id, job title, department and administrator state.
+Name, login, gender, language, time zone and sign-in state change with their flags and are not printed in that table.`,
+	Example: `  y360c user set --email person@example.com --position Engineer --department-id 42 --display-name "Person Example" --about "Directory account" --birthday 1990-01-31 --external-id ext-100
+  y360c user set --email person@example.com --first-name Person --last-name Example --middle-name Middle --nickname person --gender unspecified --language ru --timezone Europe/Moscow
+  y360c user set --id user-100 --is-enabled no --is-admin no`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Print("user set is called")
 
@@ -120,23 +143,23 @@ var setCmd = &cobra.Command{
 func init() {
 	setCmd.Flags().IntVarP(&orgId, "org-id", "o", 0, "organization id")
 	setCmd.Flags().StringVarP(&token, "token", "t", "", "access token")
-	setCmd.Flags().StringVar(&userId, "id", "", "user id")
-	setCmd.Flags().StringVar(&userEmail, "email", "", "user email address")
+	setCmd.Flags().StringVar(&userId, "id", "", "user id of the employee to change")
+	setCmd.Flags().StringVar(&userEmail, "email", "", "mailbox of the employee to change")
 
-	setCmd.Flags().StringVar(&about, "about", "", "about an user")
-	setCmd.Flags().StringVar(&birthday, "birthday", "", "user birthday (YYYY-MM-DD)")
-	setCmd.Flags().StringVar(&displayName, "display-name", "", "user display name")
-	setCmd.Flags().StringVar(&externalId, "external-id", "", "user external id")
-	setCmd.Flags().StringVar(&position, "position", "", "user position")
-	setCmd.Flags().Var(&isAdmin, "is-admin", "user has admin permissions (yes or no)")
-	setCmd.Flags().StringVar(&nickname, "nickname", "", "employee login")
-	setCmd.Flags().StringVar(&firstName, "first-name", "", "employee first name")
-	setCmd.Flags().StringVar(&lastName, "last-name", "", "employee last name")
-	setCmd.Flags().StringVar(&middleName, "middle-name", "", "employee middle name")
-	setCmd.Flags().StringVar(&gender, "gender", "", "user gender")
-	setCmd.Flags().StringVar(&language, "language", "", "user language")
-	setCmd.Flags().StringVar(&timezone, "timezone", "", "user timezone")
-	setCmd.Flags().Var(&isEnabled, "is-enabled", "user can sign in (yes or no)")
+	setCmd.Flags().StringVar(&about, "about", "", "profile description")
+	setCmd.Flags().StringVar(&birthday, "birthday", "", "birthday, YYYY-MM-DD")
+	setCmd.Flags().StringVar(&displayName, "display-name", "", "name shown in the profile")
+	setCmd.Flags().StringVar(&externalId, "external-id", "", "external identifier")
+	setCmd.Flags().StringVar(&position, "position", "", "job title")
+	setCmd.Flags().Var(&isAdmin, "is-admin", "administrator rights: yes or no")
+	setCmd.Flags().StringVar(&nickname, "nickname", "", "login")
+	setCmd.Flags().StringVar(&firstName, "first-name", "", "given name")
+	setCmd.Flags().StringVar(&lastName, "last-name", "", "family name")
+	setCmd.Flags().StringVar(&middleName, "middle-name", "", "patronymic")
+	setCmd.Flags().StringVar(&gender, "gender", "", "gender value accepted by the directory")
+	setCmd.Flags().StringVar(&language, "language", "", "language code, for example ru")
+	setCmd.Flags().StringVar(&timezone, "timezone", "", "time zone, for example Europe/Moscow")
+	setCmd.Flags().Var(&isEnabled, "is-enabled", "sign-in allowed: yes or no")
 	setCmd.Flags().IntVar(&departmentID, "department-id", 0, "department id")
 
 	setCmd.MarkFlagsOneRequired("id", "email")

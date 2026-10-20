@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 	Use:   "y360c",
 	Short: "Yandex360 cli",
 	Long: `This app allows you to use the Yandex360 API via cli with some useful features.
-Y360_ORG_ID and Y360_API_BASE are read from .env. Y360_TOKEN and Y360_PASSWORD are read from the environment.`,
+Y360_TOKEN and Y360_ORG_ID are read from the environment. Y360_API_BASE is read from .env.`,
 	Example: `  y360c user --help
   y360c user add --help
   y360c dept ls --help`,

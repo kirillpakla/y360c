@@ -27,8 +27,8 @@ var (
 	cloudBase     = BaseUrlV2
 )
 
-// LoadSettings reads Y360_ORG_ID and Y360_API_BASE from envFile.
-// Y360_TOKEN in the file is ignored. lookup supplies the process environment.
+// LoadSettings reads Y360_API_BASE from envFile.
+// Y360_ORG_ID and Y360_TOKEN are read only from lookup. Copies in the file are ignored.
 func LoadSettings(envFile string, lookup func(string) (string, bool)) (Settings, error) {
 	values, err := parseEnvFile(envFile)
 	if err != nil {
@@ -36,24 +36,36 @@ func LoadSettings(envFile string, lookup func(string) (string, bool)) (Settings,
 	}
 
 	var settings Settings
-	if raw := strings.TrimSpace(values["Y360_ORG_ID"]); raw != "" {
-		id, convErr := strconv.Atoi(raw)
-		if convErr != nil || id < 0 {
-			return Settings{}, errors.New("organization id is invalid")
-		}
-		settings.OrgID = id
-	}
 	settings.APIBase = strings.TrimSpace(values["Y360_API_BASE"])
 
 	if lookup != nil {
 		if token, ok := lookup("Y360_TOKEN"); ok {
 			settings.Token = token
 		}
+		if raw, ok := lookup("Y360_ORG_ID"); ok {
+			id, convErr := parseOrgID(raw)
+			if convErr != nil {
+				return Settings{}, convErr
+			}
+			settings.OrgID = id
+		}
 	}
 	if settings.Token == "" {
 		return settings, ErrTokenMissing
 	}
 	return settings, nil
+}
+
+func parseOrgID(raw string) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, nil
+	}
+	id, err := strconv.Atoi(raw)
+	if err != nil || id < 0 {
+		return 0, errors.New("organization id is invalid")
+	}
+	return id, nil
 }
 
 func parseEnvFile(path string) (map[string]string, error) {

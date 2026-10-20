@@ -23,8 +23,9 @@ var Cmd = &cobra.Command{
 	Short: "Manage Y360 users",
 	Long: `The command provides access to Y360 user management.
 Cannot be executed directly, use one of the available sub-commands.
-Y360_ORG_ID and Y360_API_BASE are read from .env. Y360_TOKEN is read from the environment.`,
+Y360_TOKEN and Y360_ORG_ID are read from the environment. Y360_API_BASE is read from .env.`,
 	Example: `  y360c user add --help
+  y360c user set --help
   y360c user ls --email person@example.com`,
 	//	Run: func(cmd *cobra.Command, args []string) {
 	//		fmt.Println("user called")

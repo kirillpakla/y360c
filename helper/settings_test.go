@@ -13,7 +13,7 @@ func TestLoadSettingsReadsOrgAndBaseFromFileAndTokenFromEnv(t *testing.T) {
 	envFile := filepath.Join(dir, ".env")
 	body := "" +
 		"# local non-secrets\n" +
-		"Y360_ORG_ID=1001\n" +
+		"Y360_ORG_ID=9999\n" +
 		"Y360_API_BASE=http://127.0.0.1:9\n" +
 		"Y360_TOKEN=file-secret\n"
 	if err := os.WriteFile(envFile, []byte(body), 0o600); err != nil {
@@ -21,10 +21,14 @@ func TestLoadSettingsReadsOrgAndBaseFromFileAndTokenFromEnv(t *testing.T) {
 	}
 
 	settings, err := LoadSettings(envFile, func(key string) (string, bool) {
-		if key == "Y360_TOKEN" {
+		switch key {
+		case "Y360_TOKEN":
 			return "env-secret", true
+		case "Y360_ORG_ID":
+			return "1001", true
+		default:
+			return "", false
 		}
-		return "", false
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -55,6 +59,9 @@ func TestLoadSettingsIgnoresFileTokenWhenEnvIsEmpty(t *testing.T) {
 	if settings.Token != "" {
 		t.Fatal("file token was accepted")
 	}
+	if settings.OrgID != 0 {
+		t.Fatal("file organization id was accepted")
+	}
 	if err != nil && strings.Contains(err.Error(), fileToken) {
 		t.Fatal("missing token error echoed the file value")
 	}
@@ -73,6 +80,47 @@ func TestLoadSettingsMissingTokenDoesNotEchoSecret(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "1001") {
 		t.Fatal("missing token error included the organization id")
+	}
+}
+
+func TestLoadSettingsRejectsInvalidOrgIDFromEnv(t *testing.T) {
+	const raw = "not-a-number"
+	_, err := LoadSettings(filepath.Join(t.TempDir(), ".env"), func(key string) (string, bool) {
+		switch key {
+		case "Y360_ORG_ID":
+			return raw, true
+		case "Y360_TOKEN":
+			return "synthetic-token", true
+		default:
+			return "", false
+		}
+	})
+	if err == nil || err.Error() != "organization id is invalid" {
+		t.Fatalf("error = %v", err)
+	}
+	if strings.Contains(err.Error(), raw) {
+		t.Fatal("invalid organization id was echoed")
+	}
+}
+
+func TestGetTokenReadsProcessEnvironment(t *testing.T) {
+	t.Setenv("Y360_TOKEN", "synthetic-token")
+
+	token, err := GetToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token != "synthetic-token" {
+		t.Fatalf("token = %q", token)
+	}
+}
+
+func TestGetTokenRejectsEmptyProcessEnvironment(t *testing.T) {
+	t.Setenv("Y360_TOKEN", "")
+
+	_, err := GetToken()
+	if !errors.Is(err, ErrTokenMissing) {
+		t.Fatalf("error = %v", err)
 	}
 }
 

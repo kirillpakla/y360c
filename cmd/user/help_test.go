@@ -14,9 +14,22 @@ func TestHelpDescribesFlagsAndShowsExamples(t *testing.T) {
 		cmd  *cobra.Command
 		want []string
 	}{
-		{Cmd, []string{"Examples:", "y360c user add --help", "Y360_TOKEN"}},
-		{addCmd, []string{"Examples:", "--nickname", "--department-id", "department id", "y360c user add --nickname person --department-id 42", "Y360_PASSWORD"}},
-		{setCmd, []string{"Examples:", "--department-id", "--is-enabled", "y360c user set --email person@example.com --department-id 42"}},
+		{Cmd, []string{"Examples:", "y360c user add --help", "y360c user set --help", "Y360_TOKEN"}},
+		{addCmd, []string{
+			"Examples:", "Required:", "job title", "YYYY-MM-DD",
+			"--nickname", "--department-id", "--first-name", "--last-name", "--middle-name Middle",
+			"--position Engineer", "--display-name", "--about", "--birthday 1990-01-31",
+			"--gender unspecified", "--language ru", "--timezone Europe/Moscow", "--external-id ext-100",
+			"--password TempPass-1", "--output creds.csv",
+		}},
+		{setCmd, []string{
+			"Examples:", "not sent", "job title", "YYYY-MM-DD", "yes or no",
+			"--email person@example.com", "--position Engineer", "--department-id 42",
+			"--display-name", "--about", "--birthday 1990-01-31", "--external-id ext-100",
+			"--first-name Person", "--last-name Example", "--middle-name Middle", "--nickname person",
+			"--gender unspecified", "--language ru", "--timezone Europe/Moscow",
+			"--id user-100", "--is-enabled no", "--is-admin no",
+		}},
 		{listCmd, []string{"Examples:", "--email", "--dept-id", "y360c user ls --dept-id 42"}},
 		{infoCmd, []string{"Examples:", "--email", "y360c user info --email person@example.com"}},
 		{alias.Cmd, []string{"Examples:", "--alias", "y360c user alias ls --email person@example.com", "y360c user alias add --email person@example.com --alias alias@example.com"}},
@@ -27,6 +40,9 @@ func TestHelpDescribesFlagsAndShowsExamples(t *testing.T) {
 			if !strings.Contains(text, part) {
 				t.Errorf("%s help missing %q\n%s", tc.cmd.Name(), part, text)
 			}
+		}
+		if strings.Contains(text, "21-school.ru") || strings.Contains(text, "test-tool") {
+			t.Errorf("%s help contains a private example\n%s", tc.cmd.Name(), text)
 		}
 	}
 }

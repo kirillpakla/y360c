@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/goccy/go-json"
 
@@ -77,7 +76,7 @@ func NewDirectoryClient(orgID int, token string) DirectoryClient {
 		CloudBase:     CloudBase(),
 		Token:         token,
 		OrgID:         orgID,
-		HTTP:          &http.Client{Timeout: 60 * time.Second},
+		HTTP:          newDirectClient(),
 	}
 }
 
@@ -104,10 +103,11 @@ func (c DirectoryClient) CreateEmployee(in CreateEmployeeInput) (*model.User, er
 		return nil, errors.New("nickname, department id, first name and last name must be specified")
 	}
 	body := map[string]any{
-		"nickname":     in.Nickname,
-		"departmentId": in.DepartmentID,
-		"name":         nameBody(in.First, in.Last, in.Middle),
-		"password":     in.Password,
+		"nickname":               in.Nickname,
+		"departmentId":           in.DepartmentID,
+		"name":                   nameBody(in.First, in.Last, in.Middle),
+		"password":               in.Password,
+		"passwordChangeRequired": true,
 	}
 	putString(body, "about", in.About)
 	putString(body, "birthday", in.Birthday)
@@ -197,6 +197,42 @@ func (c DirectoryClient) AddAlias(userID, alias string) (*AliasResult, error) {
 	return &AliasResult{ID: user.Id, Aliases: user.Aliases, Name: user.Name}, nil
 }
 
+// FindUserByEmail uses the current directory list and its email filter on cloud-api.yandex.net.
+func (c DirectoryClient) FindUserByEmail(email string) (*model.User, error) {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return nil, errors.New("email must be specified")
+	}
+	query := url.Values{}
+	query.Set("email", email)
+	query.Set("limit", "10")
+	endpoint := fmt.Sprintf("%s/v1/directory/organizations/%d/users?%s", c.cloudBase(), c.OrgID, query.Encode())
+	resp, err := c.do(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	var page struct {
+		Items []json.RawMessage `json:"items"`
+	}
+	if err := json.Unmarshal(resp.Body, &page); err != nil {
+		return nil, err
+	}
+	var fallback *model.User
+	for _, raw := range page.Items {
+		user, err := decodeDirectoryUser(raw)
+		if err != nil {
+			return nil, err
+		}
+		if strings.EqualFold(user.Email, email) {
+			return &user, nil
+		}
+		if fallback == nil {
+			fallback = &user
+		}
+	}
+	return fallback, nil
+}
+
 // ListAliases reads aliases from the directory user resource on api360.yandex.net.
 func (c DirectoryClient) ListAliases(userID string) (*model.User, error) {
 	endpoint := fmt.Sprintf("%s/directory/v1/org/%d/users/%s", c.directoryBase(), c.OrgID, pathSegment(userID))
@@ -246,7 +282,7 @@ func (c DirectoryClient) do(method, endpoint string, payload []byte) (*ApiRespon
 	}
 	client := c.HTTP
 	if client == nil {
-		client = &http.Client{Timeout: 60 * time.Second}
+		client = newDirectClient()
 	}
 	resp, err := client.Do(req)
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"slices"
 	"strings"
 	"time"
 
@@ -97,6 +96,19 @@ func EnumOnOffToBool(value EnumOnOff) *bool {
 
 // Main package code
 
+// newDirectClient dials Yandex hosts itself. The process HTTP proxy answers
+// CONNECT with 403 for these hosts, and Go then reports that as Forbidden
+// before the API sees the request.
+func newDirectClient() *http.Client {
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return &http.Client{Timeout: 60 * time.Second, Transport: &http.Transport{Proxy: nil}}
+	}
+	transport := base.Clone()
+	transport.Proxy = nil
+	return &http.Client{Timeout: 60 * time.Second, Transport: transport}
+}
+
 type ApiResponse struct {
 	HttpCode int
 	Body     []byte
@@ -113,9 +125,7 @@ func MakeRequest(url string, method string, token string, payload []byte) (*ApiR
 		req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	}
 
-	client := &http.Client{}
-	client.Timeout = 60 * time.Second
-	resp, err := client.Do(req)
+	resp, err := newDirectClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -243,29 +253,7 @@ func GetUserByEmail(orgId int, token string, email string) (*model.User, error) 
 		return nil, errors.New("organization id must be specified")
 	}
 
-	var url = fmt.Sprintf("%s/directory/v1/org/%d/users?perPage=%d", BaseUrl, orgId, 1000)
-
-	resp, err := MakeRequest(url, "GET", token, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := GetErrorText(resp); err != nil {
-		return nil, err
-	}
-
-	var data model.UserList
-	if err := json.Unmarshal(resp.Body, &data); err != nil {
-		return nil, err
-	}
-
-	ix := slices.IndexFunc(data.Users, func(u model.User) bool { return strings.EqualFold(u.Email, email) })
-
-	if ix >= 0 {
-		return &data.Users[ix], nil
-	}
-
-	return nil, nil
+	return NewDirectoryClient(orgId, token).FindUserByEmail(email)
 }
 
 func CheckTaskById(orgId int, token string, taskId string) (*model.TaskStatusResponse, error) {

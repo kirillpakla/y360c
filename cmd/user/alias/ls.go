@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/foxsoft2005/y360c/helper"
+	"github.com/foxsoft2005/y360c/model"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -37,32 +38,32 @@ var lsCmd = &cobra.Command{
 			orgId = t
 		}
 
+		var data *model.User
 		if userEmail != "" {
-			us, err := helper.GetUserByEmail(orgId, token, userEmail)
+			found, err := helper.GetUserByEmail(orgId, token, userEmail)
 			if err != nil {
 				log.Fatalln("Failed to get user by email", err)
 			}
-
-			if us == nil {
+			if found == nil {
 				log.Fatalf("User (mailbox) %s does not found", userEmail)
 			}
-
-			userId = us.Id
-		}
-
-		data, err := helper.NewDirectoryClient(orgId, token).ListAliases(userId)
-		if err != nil {
-			log.Fatalln("Unable to list aliases:", err)
+			data = found
+		} else {
+			found, err := helper.NewDirectoryClient(orgId, token).ListAliases(userId)
+			if err != nil {
+				log.Fatalln("Unable to list aliases:", err)
+			}
+			data = found
 		}
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendHeader(table.Row{"user id", "alias"})
+		t.AppendHeader(table.Row{"email", "user id", "alias"})
 		if len(data.Aliases) == 0 {
-			t.AppendRow(table.Row{data.Id, ""})
+			t.AppendRow(table.Row{data.Email, data.Id, ""})
 		}
 		for _, alias := range data.Aliases {
-			t.AppendRow(table.Row{data.Id, alias})
+			t.AppendRow(table.Row{data.Email, data.Id, alias})
 		}
 		t.AppendSeparator()
 		t.Render()
