@@ -20,6 +20,9 @@ var Cmd = &cobra.Command{
 	Short: "Manage user mailbox aliases",
 	Long: `Use this command to manage user mailbox aliases.
 Cannot be executed directly, please use one of the available sub-commands.`,
+	Example: `  y360c user alias ls --email person@example.com
+  y360c user alias add --email person@example.com --alias alias@example.com
+  y360c user alias rm --email person@example.com --alias alias@example.com`,
 	//	Run: func(cmd *cobra.Command, args []string) {
 	//		fmt.Println("user alias called")
 	//	},

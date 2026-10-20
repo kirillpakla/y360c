@@ -3,26 +3,31 @@
 package user
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/goccy/go-json"
-
 	"github.com/foxsoft2005/y360c/helper"
-	"github.com/foxsoft2005/y360c/model"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
 var (
-	about       string
-	birthday    string
-	displayName string
-	externalId  string
-	position    string
-	isAdmin     helper.EnumYesNo
+	about        string
+	birthday     string
+	displayName  string
+	externalId   string
+	position     string
+	isAdmin      helper.EnumYesNo
+	nickname     string
+	firstName    string
+	lastName     string
+	middleName   string
+	gender       string
+	language     string
+	timezone     string
+	isEnabled    helper.EnumYesNo
+	departmentID int
 )
 
 var setCmd = &cobra.Command{
@@ -30,6 +35,8 @@ var setCmd = &cobra.Command{
 	Short: "Set an attributes of the user",
 	Long: `Use this command to set an attributes (name, birthday, department, etc.) of the selected user.
 "directory:write_users" permission is required (see Y360 help topics).`,
+	Example: `  y360c user set --email person@example.com --department-id 42
+  y360c user set --id user-100 --is-enabled no`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Print("user set is called")
 
@@ -56,22 +63,6 @@ var setCmd = &cobra.Command{
 			}
 		}
 
-		item := struct {
-			About       *string `json:"about,omitempty"`
-			Birthday    *string `json:"birthday,omitempty"`
-			DisplayName *string `json:"displayName,omitempty"`
-			ExternalId  *string `json:"externalId,omitempty"`
-			Position    *string `json:"position,omitempty"`
-			IsAdmin     *bool   `json:"isAdmin,omitempty"`
-		}{
-			About:       helper.ToNullableString(about),
-			Birthday:    helper.ToNullableString(birthday),
-			DisplayName: helper.ToNullableString(displayName),
-			ExternalId:  helper.ToNullableString(externalId),
-			Position:    helper.ToNullableString(position),
-			IsAdmin:     helper.EnumYesNoToBool(isAdmin),
-		}
-
 		if userEmail != "" {
 			us, err := helper.GetUserByEmail(orgId, token, userEmail)
 			if err != nil {
@@ -85,21 +76,29 @@ var setCmd = &cobra.Command{
 			userId = us.Id
 		}
 
-		var url = fmt.Sprintf("%s/directory/v1/org/%d/users/%s", helper.BaseUrl, orgId, userId)
-		payload, _ := json.Marshal(item)
-
-		resp, err := helper.MakeRequest(url, "PATCH", token, payload)
+		patch := helper.PatchInput{
+			About:       about,
+			Birthday:    birthday,
+			DisplayName: displayName,
+			ExternalID:  externalId,
+			Position:    position,
+			Nickname:    nickname,
+			Gender:      gender,
+			Language:    language,
+			Timezone:    timezone,
+			First:       firstName,
+			Last:        lastName,
+			Middle:      middleName,
+			IsAdmin:     isAdmin,
+			IsEnabled:   isEnabled,
+		}
+		if cmd.Flags().Changed("department-id") {
+			id := departmentID
+			patch.DepartmentID = &id
+		}
+		data, err := helper.NewDirectoryClient(orgId, token).PatchEmployee(userId, patch)
 		if err != nil {
-			log.Fatalln("Unable to make API request:", err)
-		}
-
-		if err := helper.GetErrorText(resp); err != nil {
-			log.Fatalln(err)
-		}
-
-		var data model.User
-		if err := json.Unmarshal(resp.Body, &data); err != nil {
-			log.Fatalln("Unable to evaluate data:", err)
+			log.Fatalln("Unable to update user:", err)
 		}
 
 		t := table.NewWriter()
@@ -110,6 +109,7 @@ var setCmd = &cobra.Command{
 		t.AppendRow(table.Row{"Display Name", data.DisplayName})
 		t.AppendRow(table.Row{"External Id", data.ExternalId})
 		t.AppendRow(table.Row{"Position", data.Position})
+		t.AppendRow(table.Row{"Department Id", data.DepartmentId})
 		t.AppendRow(table.Row{"Is Admin", data.IsAdmin})
 		t.AppendSeparator()
 		t.Style().Options.SeparateRows = true
@@ -129,9 +129,18 @@ func init() {
 	setCmd.Flags().StringVar(&externalId, "external-id", "", "user external id")
 	setCmd.Flags().StringVar(&position, "position", "", "user position")
 	setCmd.Flags().Var(&isAdmin, "is-admin", "user has admin permissions (yes or no)")
+	setCmd.Flags().StringVar(&nickname, "nickname", "", "employee login")
+	setCmd.Flags().StringVar(&firstName, "first-name", "", "employee first name")
+	setCmd.Flags().StringVar(&lastName, "last-name", "", "employee last name")
+	setCmd.Flags().StringVar(&middleName, "middle-name", "", "employee middle name")
+	setCmd.Flags().StringVar(&gender, "gender", "", "user gender")
+	setCmd.Flags().StringVar(&language, "language", "", "user language")
+	setCmd.Flags().StringVar(&timezone, "timezone", "", "user timezone")
+	setCmd.Flags().Var(&isEnabled, "is-enabled", "user can sign in (yes or no)")
+	setCmd.Flags().IntVar(&departmentID, "department-id", 0, "department id")
 
 	setCmd.MarkFlagsOneRequired("id", "email")
 	setCmd.MarkFlagsMutuallyExclusive("id", "email")
 
-	setCmd.MarkFlagsOneRequired("about", "birthday", "display-name", "external-id", "position", "is-admin")
+	setCmd.MarkFlagsOneRequired("about", "birthday", "display-name", "external-id", "position", "is-admin", "nickname", "first-name", "last-name", "middle-name", "gender", "language", "timezone", "is-enabled", "department-id")
 }

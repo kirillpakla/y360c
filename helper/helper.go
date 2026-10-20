@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -148,9 +149,9 @@ func GetErrorText(response *ApiResponse) error {
 }
 
 func GetToken() (string, error) {
-	var token = viper.GetString("token")
-	if token == "" {
-		return "", errors.New("access token must be specified")
+	token, ok := os.LookupEnv("Y360_TOKEN")
+	if !ok || token == "" {
+		return "", ErrTokenMissing
 	}
 
 	return token, nil

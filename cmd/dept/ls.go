@@ -6,13 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/goccy/go-json"
 
 	"github.com/foxsoft2005/y360c/helper"
-	"github.com/foxsoft2005/y360c/model"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -48,9 +45,13 @@ var (
 
 var lsCmd = &cobra.Command{
 	Use:   "ls",
-	Short: "Get a list of the departments",
-	Long: `Use this command to retrieve a list of departments of selected organization.
+	Short: "Get a hierarchical list of departments",
+	Long: `Use this command to retrieve departments of the selected organization as a tree.
+Mailing aliases are printed on the same line as the department.
 "directory:read_departments" permission is required (see Y360 help topics).`,
+	Example: `  y360c dept ls
+  y360c dept ls --parent-id 10
+  y360c dept ls --order-by name`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if !asRaw {
 			log.Print("dept ls called")
@@ -72,37 +73,25 @@ var lsCmd = &cobra.Command{
 			orgId = t
 		}
 
-		var url = fmt.Sprintf("%s/directory/v1/org/%d/departments?perPage=%d&orderBy=%s", helper.BaseUrl, orgId, maxRec, orderBy)
-		if parentId > 0 {
-			url += fmt.Sprintf("&parentId=%d", parentId)
-		}
-
-		resp, err := helper.MakeRequest(url, "GET", token, nil)
+		records, err := helper.NewDirectoryClient(orgId, token).ListDepartments(maxRec)
 		if err != nil {
-			log.Fatalln("Unable to make API request:", err)
+			log.Fatalln("Unable to list departments:", err)
 		}
-
-		if err := helper.GetErrorText(resp); err != nil {
-			log.Fatalln(err)
-		}
-
-		var data model.DepartmentList
-		if err := json.Unmarshal(resp.Body, &data); err != nil {
-			log.Fatalln("Unable to evaluate data:", err)
+		if parentId > 0 {
+			selected, ok := helper.DepartmentSubtree(records, parentId)
+			if !ok {
+				log.Fatalln("Department was not found")
+			}
+			records = selected
 		}
 
 		if asRaw {
-			buff, _ := json.MarshalIndent(data.Departments, "", "     ")
+			buff, _ := json.MarshalIndent(records, "", "     ")
 			fmt.Print(string(buff))
+		} else if string(orderBy) == "name" {
+			fmt.Print(helper.FormatDepartmentTreeByName(records))
 		} else {
-			t := table.NewWriter()
-			t.SetOutputMirror(os.Stdout)
-			t.AppendHeader(table.Row{"id", "parent id", "name", "description", "email", "label", "members count"})
-			for _, e := range data.Departments {
-				t.AppendRow(table.Row{e.Id, e.ParentId, e.Name, e.Description, e.Email, e.Label, e.MembersCount})
-			}
-			t.AppendSeparator()
-			t.Render()
+			fmt.Print(helper.FormatDepartmentTree(records))
 		}
 
 	},

@@ -3,25 +3,31 @@
 package internal
 
 import (
+	"errors"
 	"log"
+	"os"
 
+	"github.com/foxsoft2005/y360c/helper"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var InitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize the application",
-	Long: `Use this command to create / check the app configuration.
-The config file will be automatically created if not found.`,
+	Long: `Use this command to check local settings.
+Ordinary variables are read from .env. The access token is read from the environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("Config file is %s", viper.ConfigFileUsed())
-		if viper.GetString("token") == "" {
-			log.Printf("Token: unset")
-		} else {
-			log.Printf("Token: set")
+		log.Print("Settings file is .env; the token is read from the environment")
+		settings, err := helper.LoadSettings(".env", os.LookupEnv)
+		if err != nil && !errors.Is(err, helper.ErrTokenMissing) {
+			log.Fatalln("Incorrect settings:", err)
 		}
-		log.Printf("Organization id: %d", viper.GetInt("org-id"))
+		if settings.Token == "" {
+			log.Print("Token: unset")
+		} else {
+			log.Print("Token: set")
+		}
+		log.Printf("Organization id: %s", helper.OrgIDStatus(settings.OrgID))
 	},
 }
 

@@ -3,14 +3,10 @@
 package alias
 
 import (
-	"fmt"
 	"log"
 	"os"
 
-	"github.com/goccy/go-json"
-
 	"github.com/foxsoft2005/y360c/helper"
-	"github.com/foxsoft2005/y360c/model"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -21,6 +17,7 @@ var rmCmd = &cobra.Command{
 	Short: "Remove an alias of the user mailbox",
 	Long: `Use this command to remove an alias for the user mailbox.
 "directory:write_users" permission is required (see Y360 help topics).`,
+	Example: `  y360c user alias rm --email person@example.com --alias alias@example.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("user alias rm called")
 
@@ -57,20 +54,9 @@ var rmCmd = &cobra.Command{
 			userId = us.Id
 		}
 
-		var url = fmt.Sprintf("%s/directory/v1/org/%d/users/%s/aliases/%s", helper.BaseUrl, orgId, userId, alias)
-
-		resp, err := helper.MakeRequest(url, "DELETE", token, nil)
+		data, err := helper.NewDirectoryClient(orgId, token).RemoveAlias(userId, alias)
 		if err != nil {
-			log.Fatalln("Unable to make API request:", err)
-		}
-
-		if err := helper.GetErrorText(resp); err != nil {
-			log.Fatalln(err)
-		}
-
-		var data model.RmAliasResponse
-		if err := json.Unmarshal(resp.Body, &data); err != nil {
-			log.Fatalln("Unable to evaluate data:", err)
+			log.Fatalln("Unable to remove alias:", err)
 		}
 
 		t := table.NewWriter()

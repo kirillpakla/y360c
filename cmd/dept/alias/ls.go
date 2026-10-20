@@ -22,6 +22,7 @@ var lsCmd = &cobra.Command{
 	Short: "Get a list of the department aliases",
 	Long: `Use this command to get a list of the department aliases.
 "directory:read_departments" permission is required (see Y360 help topics).`,
+	Example: `  y360c dept alias ls --id 10`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("dept alias ls called")
 

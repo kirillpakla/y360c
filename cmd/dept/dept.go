@@ -26,6 +26,8 @@ var DeptCmd = &cobra.Command{
 	Short: "Manage Y360 departments",
 	Long: `The command provides access to Y360 departments.
 Cannot be executed directly, use one of the available sub-commands.`,
+	Example: `  y360c dept ls
+  y360c dept ls --parent-id 10`,
 	//	Run: func(cmd *cobra.Command, args []string) {
 	//		fmt.Println("dept called")
 	//	},

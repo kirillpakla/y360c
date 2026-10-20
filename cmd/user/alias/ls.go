@@ -3,15 +3,10 @@
 package alias
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"strings"
-
-	"github.com/goccy/go-json"
 
 	"github.com/foxsoft2005/y360c/helper"
-	"github.com/foxsoft2005/y360c/model"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -22,6 +17,7 @@ var lsCmd = &cobra.Command{
 	Short: "Get a list of the user mailbox aliases",
 	Long: `Use this command to get a list of the user mailbox aliases.
 "directory:read_users" permission is required (see Y360 help topics).`,
+	Example: `  y360c user alias ls --email person@example.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("user alias ls called")
 
@@ -54,29 +50,21 @@ var lsCmd = &cobra.Command{
 			userId = us.Id
 		}
 
-		var url = fmt.Sprintf("%s/directory/v1/org/%d/users/%s", helper.BaseUrl, orgId, userId)
-
-		resp, err := helper.MakeRequest(url, "GET", token, nil)
+		data, err := helper.NewDirectoryClient(orgId, token).ListAliases(userId)
 		if err != nil {
-			log.Fatalln("Unable to make API request:", err)
-		}
-
-		if err := helper.GetErrorText(resp); err != nil {
-			log.Fatalln(err)
-		}
-
-		var data model.User
-		if err := json.Unmarshal(resp.Body, &data); err != nil {
-			log.Fatalln("Unable to evaluate data:", err)
+			log.Fatalln("Unable to list aliases:", err)
 		}
 
 		t := table.NewWriter()
 		t.SetOutputMirror(os.Stdout)
-		t.AppendRow(table.Row{"Id", data.Id})
-		t.AppendRow(table.Row{"Name", strings.TrimSpace(fmt.Sprintf("%s %s %s", data.Name.Last, data.Name.First, data.Name.Middle))})
-		t.AppendRow(table.Row{"Aliases", strings.Join(data.Aliases, ",")})
+		t.AppendHeader(table.Row{"user id", "alias"})
+		if len(data.Aliases) == 0 {
+			t.AppendRow(table.Row{data.Id, ""})
+		}
+		for _, alias := range data.Aliases {
+			t.AppendRow(table.Row{data.Id, alias})
+		}
 		t.AppendSeparator()
-		t.Style().Options.SeparateRows = true
 		t.Render()
 	},
 }

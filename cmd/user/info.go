@@ -22,6 +22,7 @@ var infoCmd = &cobra.Command{
 	Short: "Get a user information",
 	Long: `Use this command to get a user information by id.
 "directory:read_users" permission is required (see Y360 help topics).`,
+	Example: `  y360c user info --email person@example.com`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if !asRaw {
 			log.Println("user info called")

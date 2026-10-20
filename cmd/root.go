@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/foxsoft2005/y360c/cmd/auth"
 	"github.com/foxsoft2005/y360c/cmd/dept"
@@ -23,12 +22,17 @@ import (
 	"github.com/foxsoft2005/y360c/cmd/org"
 	"github.com/foxsoft2005/y360c/cmd/user"
 	"github.com/foxsoft2005/y360c/cmd/whitelist"
+	"github.com/foxsoft2005/y360c/helper"
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "y360c",
-	Short:   "Yandex360 cli",
-	Long:    `This app allows you to use the Yandex360 API via cli with some useful features.`,
+	Use:   "y360c",
+	Short: "Yandex360 cli",
+	Long: `This app allows you to use the Yandex360 API via cli with some useful features.
+Y360_ORG_ID and Y360_API_BASE are read from .env. Y360_TOKEN and Y360_PASSWORD are read from the environment.`,
+	Example: `  y360c user --help
+  y360c user add --help
+  y360c dept ls --help`,
 	Version: "1.0.0-beta.47",
 }
 
@@ -58,27 +62,9 @@ func init() {
 }
 
 func initConfig() {
-	home, err := os.UserHomeDir()
-	cobra.CheckErr(err)
-
-	viper.AddConfigPath(home)
-	viper.SetConfigType("json")
-	viper.SetConfigName("y360c")
-
-	if err := viper.ReadInConfig(); err != nil {
-		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if errors.As(err, &configFileNotFoundError) {
-			viper.SetDefault("orgId", 0)
-			viper.SetDefault("token", "")
-
-			err := viper.SafeWriteConfig()
-			if err != nil {
-				log.Fatalln("Error writing config:", err)
-			}
-			err = viper.ReadInConfig()
-			if err != nil {
-				log.Fatalln("Error reading config:", err)
-			}
-		}
+	settings, err := helper.LoadSettings(".env", os.LookupEnv)
+	if err != nil && !errors.Is(err, helper.ErrTokenMissing) {
+		log.Fatalln("Incorrect settings:", err)
 	}
+	helper.ApplySettings(settings)
 }
